@@ -18,44 +18,11 @@ namespace unidadcinco.jvvi
         public tablapieza()
         {
             InitializeComponent();
-
-            //agregar opciones a combobox
-            /*
-            production_line.Items.Add("Por Pedido");
-            production_line.Items.Add("Por Lotes");
-            production_line.Items.Add("En Masa");
-            */
-
         }
-
-        /*
-        private void dataGridPieza_SelectionChanged(object sender, EventArgs e)
-        {
-            //verificar si hay alguna seleccion hecha
-            if (dataGridPieza.SelectedRows.Count > 0){
-                //c obtinene la fila seleccionada
-                DataGridViewRow selectdRow = dataGridPieza.SelectedRows[0];
-
-                //obtenemos los valores de las celdas de la fila seleccionada
-                string folio = selectdRow.Cells["folio_pieza"].Value.ToString();
-                string nombre = selectdRow.Cells["nombre"].Value.ToString();
-                string cantidad_planeada = selectdRow.Cells["cantidad_planeada"].Value.ToString();
-                string cantidad_realizada = selectdRow.Cells["cantidad_realizada"].Value.ToString();
-                string estado = selectdRow.Cells["estado"].Value.ToString();
-                string numero_de_linea = selectdRow.Cells["numero_de_linea"].Value.ToString();
-
-                folio_pieza_in.Text = folio;
-                name_pieza_in.Text = nombre;
-                planned.Text = cantidad_planeada;
-                realized.Text = cantidad_realizada;
-            }
-        } */
-
         conectarjvvi conexionjvi = new conectarjvvi();
 
         private void tablapieza_Load(object sender, EventArgs e)
-        {
-            // TODO: esta línea de código carga datos en la tabla 'unidad4DataSet1.pieza' Puede moverla o quitarla según sea necesario.
+        {            
             actualizarDataGrid();
         }
 
@@ -73,8 +40,14 @@ namespace unidadcinco.jvvi
                 }
                 catch (SqlException ex)
                 {
-                    MessageBox.Show("Error al realizar la inserción, verifique que el folio sea único", "Alerta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                    //MessageBox.Show(ex.ToString(), "Alerta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    if (ex.Number == 2627) // Número de error específico para violación de clave primaria
+                    {
+                        MessageBox.Show("El folio ya existe en la base de datos.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error al guardar el registro: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
                 
             }                        
@@ -84,19 +57,11 @@ namespace unidadcinco.jvvi
         {
             if(emptyField() == 1)
             {
-                try
-                {
-                    update();
-                    //limpiar campos
-                    clearDataFields();
-                    MessageBox.Show("Datos modificados correctamente");
-                    //actualizar datagrid
-                    actualizarDataGrid();
-                }
-                catch (SqlException ex)
-                {
-                    MessageBox.Show("Error al realizar la modificación, verifique que el folio que desea editar, exista", "Alerta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                }
+               update();
+                //limpiar campos
+                clearDataFields();                
+                //actualizar datagrid
+                actualizarDataGrid();
             }
         }
 
@@ -110,7 +75,6 @@ namespace unidadcinco.jvvi
                 delete();
                 //limpiar campos
                 clearDataFields();
-                MessageBox.Show("Datos eliminados correctamente");
                 //actualizar datagrid
                 actualizarDataGrid();
             }            
@@ -149,8 +113,8 @@ namespace unidadcinco.jvvi
         private void actualizarDataGrid()
         {
             SqlConnection conexion = new SqlConnection(conexionjvi.conectabd);
-            SqlDataAdapter adapter = new SqlDataAdapter("select *from produccion.pieza", conexion);
-            //SqlDataAdapter adapter = new SqlDataAdapter("select produccion.pieza.folio_pieza, produccion.pieza.nombre, produccion.pieza.cantidad_planeada, produccion.pieza.cantidad_realizada, produccion.pieza.estado, produccion.linea_de_produccion.nombre from produccion.pieza inner join produccion.linea_de_produccion on produccion.pieza.numero_de_linea = produccion.linea_de_produccion.numero_de_linea;", conexion);
+            //SqlDataAdapter adapter = new SqlDataAdapter("select *from produccion.pieza", conexion);
+            SqlDataAdapter adapter = new SqlDataAdapter("select produccion.pieza.folio_pieza, produccion.pieza.nombre, produccion.pieza.cantidad_planeada, produccion.pieza.cantidad_realizada, produccion.pieza.estado, produccion.linea_de_produccion.nombre as 'LDP nombre' from produccion.pieza inner join produccion.linea_de_produccion on produccion.pieza.numero_de_linea = produccion.linea_de_produccion.numero_de_linea;", conexion);
             DataTable table = new DataTable();
             adapter.Fill(table);
             dataGridPieza.DataSource = table;
@@ -264,8 +228,19 @@ namespace unidadcinco.jvvi
                 "estado = " + radioCheckState() + "," +
                 "numero_de_linea = " + comboBoxPL() + "" +
                 "where folio_pieza = '" + folio_pieza_in.Text + "'";
-            SqlCommand order = new SqlCommand(cadena, conexion);
-            order.ExecuteNonQuery();
+            SqlCommand order = new SqlCommand(cadena, conexion);            
+            int rowsAffected = order.ExecuteNonQuery();
+
+            if (rowsAffected >= 1)
+            {
+                // La actualización se realizó correctamente
+                MessageBox.Show("Filas actualizadas: " + rowsAffected);
+            }
+            else
+            {
+                // No se encontró ninguna fila para actualizar
+                MessageBox.Show("No se encontró ninguna fila para actualizar.");                
+            }
             conexion.Close();
         }
 
@@ -274,7 +249,18 @@ namespace unidadcinco.jvvi
             conexion.Open();
             String cadena = "delete from produccion.pieza where folio_pieza = '" + folio_pieza_in.Text + "'";
             SqlCommand order = new SqlCommand(cadena, conexion);
-            order.ExecuteNonQuery();
+            int rowsAffected = order.ExecuteNonQuery();
+
+            if (rowsAffected >= 1)
+            {
+                // La eliminación se realizó correctamente
+                MessageBox.Show("Fila eliminada: " + folio_pieza_in.Text);
+            }
+            else
+            {
+                // No se encontró ninguna fila para eliminar
+                MessageBox.Show("No se encontró ninguna fila para eliminar.");
+            }
             conexion.Close();
         }
 
